@@ -11,7 +11,9 @@
 const CURRENT_SNAPSHOT_ID = "20261030-abcdef012345";
 const RETAINED_SNAPSHOT_ID = "20261023-012345abcdef";
 const RETIRED_SNAPSHOT_ID = "20261016-fedcba987654";
-const PRIVATE_TERMS = ["电话", "住址", "未公开", "私人"];
+const PRIVATE_TERMS = ["电话", "住址", "未公开", "私人", "private", "phone", "address", "unpublished"];
+const isZh = () => (document.documentElement.lang || "").toLowerCase().startsWith("zh");
+const copy = (en, zh) => (isZh() ? zh : en);
 
 const INVENTORY = { current: CURRENT_SNAPSHOT_ID, retained: [CURRENT_SNAPSHOT_ID, RETAINED_SNAPSHOT_ID] };
 
@@ -184,7 +186,10 @@ function select({ text, top_k: topK = 5, filters = {} }) {
 
 function abstain(reason) {
   return {
-    answer: "当前快照中没有足够依据回答这个问题，因此不作答。",
+    answer: copy(
+      "There is not enough evidence in this snapshot to answer this question, so no answer is given.",
+      "当前快照中没有足够依据回答这个问题，因此不作答。",
+    ),
     citations: [],
     cited_chunk_ids: [],
     abstained: true,
@@ -232,13 +237,27 @@ function handleAsk(body) {
   }
   const text = String(body.text ?? "").trim();
   if (!text) {
-    return json(abstain("问题为空，没有可检索的文本。"));
+    return json(abstain(copy("The question is empty; there is no text to retrieve.", "问题为空，没有可检索的文本。")));
   }
   if (selected.length === 0) {
-    return json(abstain("当前筛选条件下没有可用证据；系统拒绝在没有依据时作答。"));
+    return json(
+      abstain(
+        copy(
+          "No evidence is available under the current filters, so the system refuses to answer without evidence.",
+          "当前筛选条件下没有可用证据；系统拒绝在没有依据时作答。",
+        ),
+      ),
+    );
   }
-  if (PRIVATE_TERMS.some((term) => text.includes(term))) {
-    return json(abstain("问题涉及未公开的个人信息，知识库没有相关证据。"));
+  if (PRIVATE_TERMS.some((term) => text.toLowerCase().includes(term))) {
+    return json(
+      abstain(
+        copy(
+          "The question asks for private personal information; the knowledge base has no evidence for it.",
+          "问题涉及未公开的个人信息，知识库没有相关证据。",
+        ),
+      ),
+    );
   }
   const seen = new Set();
   const citations = [];
@@ -250,10 +269,14 @@ function handleAsk(body) {
     citations.push(record.citation);
   }
   return json({
-    answer:
+    answer: copy(
+      `(G1a mock answer) Retrieval returned ${selected.length} excerpts; the most relevant source is ` +
+        `${selected[0].citation.publisher} (${selected[0].citation.source_type}). ` +
+        "The citations below come from this retrieval; the client only displays them and never completes or rewrites the source text.",
       `（G1a 模拟回答）本次检索返回 ${selected.length} 条片段，最相关来源为 ` +
-      `${selected[0].citation.publisher}（${selected[0].citation.source_type}）。` +
-      "以下引用均来自本次检索结果；客户端只展示，不补全或改写原文。",
+        `${selected[0].citation.publisher}（${selected[0].citation.source_type}）。` +
+        "以下引用均来自本次检索结果；客户端只展示，不补全或改写原文。",
+    ),
     citations,
     cited_chunk_ids: citations.map((citation) => citation.chunk_id),
     abstained: false,
