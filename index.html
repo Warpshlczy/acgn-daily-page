@@ -258,7 +258,58 @@
                   Board
                 </button>
               </div>
-              <span class="toolbar-hint" data-i18n="views.hint">One result · four readings</span>
+            </div>
+
+            <div
+              class="result-filters reveal"
+              id="result-filters"
+              data-i18n-aria="resultFilters.aria"
+              aria-label="Filter this response"
+              hidden
+            >
+              <div class="filter-field">
+                <label for="result-from" data-i18n="resultFilters.from">From</label>
+                <input type="date" id="result-from" />
+              </div>
+              <div class="filter-field">
+                <label for="result-to" data-i18n="resultFilters.to">To</label>
+                <input type="date" id="result-to" />
+              </div>
+              <div class="filter-field filter-sources">
+                <span class="filter-label" data-i18n="resultFilters.source">Source</span>
+                <div class="filter-source-row" role="group" data-i18n-aria="resultFilters.sourceAria">
+                  <label>
+                    <input type="checkbox" name="result_source_type" value="official" checked />
+                    <span data-i18n="source.official">Official</span>
+                  </label>
+                  <label>
+                    <input type="checkbox" name="result_source_type" value="media" checked />
+                    <span data-i18n="source.media">Media</span>
+                  </label>
+                  <label>
+                    <input type="checkbox" name="result_source_type" value="metadata" checked />
+                    <span data-i18n="source.metadata">Metadata</span>
+                  </label>
+                </div>
+              </div>
+              <div class="filter-field">
+                <label for="result-sort" data-i18n="resultFilters.sort">Sort</label>
+                <select id="result-sort">
+                  <option value="relevance" data-i18n="resultFilters.sort.relevance">
+                    Relevance
+                  </option>
+                  <option value="newest" data-i18n="resultFilters.sort.newest">
+                    Newest first
+                  </option>
+                  <option value="oldest" data-i18n="resultFilters.sort.oldest">
+                    Oldest first
+                  </option>
+                </select>
+              </div>
+              <button type="button" class="filter-reset" id="result-reset" data-i18n="resultFilters.reset">
+                Reset
+              </button>
+              <span class="result-count" id="result-count" aria-live="polite"></span>
             </div>
 
             <div class="result-state" id="result-state" aria-busy="false">

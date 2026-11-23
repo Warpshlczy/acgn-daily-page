@@ -21,6 +21,8 @@ const EN = {
   "nav.results": "Results",
   "nav.contract": "Contract",
   "chip.demo": "DEMO · mock data",
+  "chip.live": "LIVE · backend",
+  "chip.fallback": "DEMO · backend unreachable",
   "lang.aria": "Language",
 
   "hero.eyebrow": "ACGN Daily · Daily archive",
@@ -54,8 +56,13 @@ const EN = {
   "source.unknown": "Unknown source",
 
   "banner.tag": "Note",
+  "banner.tag.live": "Live",
   "banner.text":
     "This page runs on fixed mock data; citation links point to the example domain example.com.",
+  "banner.text.live":
+    "Reading the live FastAPI host at {base}: snapshots, excerpts and citations all come from the API.",
+  "banner.text.fallback":
+    "Tried the backend at {base} but it did not answer; this page is showing the bundled mock corpus.",
 
   "results.eyebrow": "Archive Results",
   "results.title.retrieve": "Search results",
@@ -90,6 +97,8 @@ const EN = {
   "snapshot.label": "Snapshot",
   "snapshot.reading": "Reading…",
   "snapshot.config": "Config A · mock",
+  "snapshot.config.live": "Config A · live",
+  "snapshot.config.fallback": "Config A · mock fallback",
   "snapshot.current": "Current",
   "snapshot.retained": "Retained",
   "snapshot.bound": "Bound {id}",
@@ -100,7 +109,6 @@ const EN = {
   "view.timeline": "Timeline",
   "view.magazine": "Magazine",
   "view.board": "Board",
-  "views.hint": "One result · four readings",
   "results.placeholder": "Reading the archive…",
 
   "rail.aria": "Quantitative profile for this query",
@@ -139,6 +147,21 @@ const EN = {
   "filters.media": "Media ID {ids}",
   "filters.any": "Any",
   "list.sep": ", ",
+
+  "resultFilters.aria": "Filter the current response",
+  "resultFilters.from": "From",
+  "resultFilters.to": "To",
+  "resultFilters.source": "Source",
+  "resultFilters.sourceAria": "Filter by source type",
+  "resultFilters.sort": "Sort",
+  "resultFilters.sort.relevance": "Relevance",
+  "resultFilters.sort.newest": "Newest first",
+  "resultFilters.sort.oldest": "Oldest first",
+  "resultFilters.reset": "Reset",
+  "resultFilters.count": "{shown} / {total} records",
+  "resultFilters.empty": "No records match these filters",
+  "resultFilters.emptyHint":
+    "Widen the date range or re-enable a source type to bring the rest of the response back.",
 
   "err.form.empty": "Enter a question or search terms.",
   "err.form.noSnapshot": "No snapshot is selected yet; refresh the snapshot list first.",
@@ -327,6 +350,8 @@ const ZH = {
   "nav.results": "检索结果",
   "nav.contract": "页面契约",
   "chip.demo": "DEMO · mock 数据",
+  "chip.live": "LIVE · 后端数据",
+  "chip.fallback": "DEMO · 后端未响应",
   "lang.aria": "语言",
 
   "hero.eyebrow": "ACGN Daily · 每日档案",
@@ -358,7 +383,10 @@ const ZH = {
   "source.unknown": "未知来源",
 
   "banner.tag": "提示",
+  "banner.tag.live": "实时",
   "banner.text": "当前页使用固定 mock 数据，引用链接指向示例地址 example.com。",
+  "banner.text.live": "正在读取 {base} 的 FastAPI 后端：快照、片段与引用均来自接口。",
+  "banner.text.fallback": "尝试连接后端 {base} 未成功，当前展示内置 mock 数据。",
 
   "results.eyebrow": "Archive Results · 档案结果",
   "results.title.retrieve": "检索结果",
@@ -393,6 +421,8 @@ const ZH = {
   "snapshot.label": "快照",
   "snapshot.reading": "正在读取…",
   "snapshot.config": "配置 A · mock",
+  "snapshot.config.live": "配置 A · live",
+  "snapshot.config.fallback": "配置 A · mock 回退",
   "snapshot.current": "当前",
   "snapshot.retained": "保留",
   "snapshot.bound": "绑定 {id}",
@@ -403,7 +433,6 @@ const ZH = {
   "view.timeline": "时间轴",
   "view.magazine": "杂志",
   "view.board": "数据看板",
-  "views.hint": "同一份结果 · 四种读法",
   "results.placeholder": "正在读取日报数据…",
 
   "rail.aria": "本次检索的量化剖面",
@@ -440,6 +469,20 @@ const ZH = {
   "filters.media": "作品 ID {ids}",
   "filters.any": "不限",
   "list.sep": "；",
+
+  "resultFilters.aria": "筛选当前结果",
+  "resultFilters.from": "开始日期",
+  "resultFilters.to": "结束日期",
+  "resultFilters.source": "来源",
+  "resultFilters.sourceAria": "按来源类型筛选",
+  "resultFilters.sort": "排序",
+  "resultFilters.sort.relevance": "相关度",
+  "resultFilters.sort.newest": "最新在前",
+  "resultFilters.sort.oldest": "最旧在前",
+  "resultFilters.reset": "重置",
+  "resultFilters.count": "{shown} / {total} 条",
+  "resultFilters.empty": "没有符合筛选条件的记录",
+  "resultFilters.emptyHint": "放宽日期范围，或重新勾选来源类型，即可看到本次返回的其他记录。",
 
   "err.form.empty": "请输入问题或检索词。",
   "err.form.noSnapshot": "还没有选择快照；请先刷新快照列表。",

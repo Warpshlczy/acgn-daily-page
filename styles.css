@@ -2601,10 +2601,132 @@ html {
   outline-offset: 2px;
 }
 
-.toolbar-hint {
+/* Result-level filters: they slice the response already in memory. */
+
+.result-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px 14px;
+  margin: -4px 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 74%);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 26px rgb(37 48 70 / 5%);
+}
+
+.result-filters[hidden] {
+  display: none;
+}
+
+.result-filters .filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.result-filters .filter-label,
+.result-filters .filter-field > label {
   font-size: 11px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.04em;
   color: var(--muted-soft);
+}
+
+.result-filters input[type="date"],
+.result-filters select {
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 12px;
+}
+
+.result-filters input[type="date"]:focus-visible,
+.result-filters select:focus-visible {
+  outline: none;
+  border-color: var(--accent-line);
+  box-shadow: 0 0 0 3px rgb(172 77 109 / 12%);
+}
+
+.result-filters .filter-sources {
+  min-width: 220px;
+}
+
+.filter-source-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.filter-source-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.filter-source-row label:has(input:checked) {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  font-weight: 600;
+}
+
+.filter-source-row input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.result-filters .filter-reset {
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    border-color var(--fast),
+    color var(--fast);
+}
+
+.result-filters .filter-reset:hover {
+  border-color: var(--accent-line);
+  color: var(--accent-hover);
+}
+
+.result-count {
+  margin-left: auto;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--muted-soft);
+}
+
+@media (max-width: 720px) {
+  .result-filters {
+    align-items: stretch;
+  }
+
+  .result-filters .filter-field,
+  .result-filters .filter-sources {
+    width: 100%;
+  }
+
+  .result-count {
+    width: 100%;
+    margin-left: 0;
+  }
 }
 
 /* 本期速览 overview strip ------------------------------------------------ */

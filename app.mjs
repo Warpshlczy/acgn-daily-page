@@ -47,6 +47,13 @@ const dom = {
   topK: document.querySelector("#top-k"),
   modeInputs: document.querySelectorAll('input[name="mode"]'),
   sourceInputs: document.querySelectorAll('input[name="source_type"]'),
+  resultFilters: document.querySelector("#result-filters"),
+  resultFrom: document.querySelector("#result-from"),
+  resultTo: document.querySelector("#result-to"),
+  resultSourceInputs: document.querySelectorAll('input[name="result_source_type"]'),
+  resultSort: document.querySelector("#result-sort"),
+  resultReset: document.querySelector("#result-reset"),
+  resultCount: document.querySelector("#result-count"),
   langButtons: document.querySelectorAll("[data-lang]"),
   statsMount: document.querySelector("#stats-mount"),
   overviewStrip: document.querySelector("#overview-strip"),
@@ -68,6 +75,8 @@ const state = {
   // `viewData` holds the last renderable dataset so switching views never touches the network.
   view: "cards",
   viewData: null,
+  // The last response before the result-level date/source/sort controls touch it.
+  rawView: null,
   viewSeries: 0,
   // One cache per endpoint: the contract cache tuple does not include the route, so sharing one
   // map between /retrieve and /ask would mix two response shapes under the same key.
@@ -107,6 +116,131 @@ function currentMode() {
 
 function selectedSourceTypes() {
   return [...dom.sourceInputs].filter((input) => input.checked).map((input) => input.value);
+}
+
+/* Result-level controls: they slice the response already in memory, so changing them never
+ * issues another request and every returned row stays reachable. */
+
+function selectedResultSourceTypes() {
+  return new Set(
+    [...dom.resultSourceInputs].filter((input) => input.checked).map((input) => input.value),
+  );
+}
+
+function matchesResultFilters(row) {
+  const citation = row.citation ?? {};
+  if (!selectedResultSourceTypes().has(citation.source_type)) {
+    return false;
+  }
+  const day = String(citation.published_at ?? "").slice(0, 10);
+  const from = dom.resultFrom?.value ?? "";
+  const to = dom.resultTo?.value ?? "";
+  if (from && day && day < from) {
+    return false;
+  }
+  if (to && day && day > to) {
+    return false;
+  }
+  return true;
+}
+
+function sortResultRows(rows) {
+  const order = dom.resultSort?.value ?? "relevance";
+  if (order === "relevance") {
+    return rows;
+  }
+  const direction = order === "oldest" ? 1 : -1;
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((left, right) => {
+      const a = String(left.row.citation?.published_at ?? "");
+      const b = String(right.row.citation?.published_at ?? "");
+      if (a === b) {
+        return left.index - right.index;
+      }
+      if (!a) {
+        return 1;
+      }
+      if (!b) {
+        return -1;
+      }
+      return a < b ? -direction : direction;
+    })
+    .map((entry) => entry.row);
+}
+
+function setResultFiltersVisible(visible) {
+  dom.resultFilters?.toggleAttribute("hidden", !visible);
+}
+
+function clearResultView() {
+  state.rawView = null;
+  state.viewData = null;
+  setResultFiltersVisible(false);
+}
+
+function recomputeView() {
+  const raw = state.rawView;
+  if (!raw) {
+    return;
+  }
+  const rows = sortResultRows(raw.rows.filter(matchesResultFilters));
+  state.viewData = { ...raw, rows };
+  state.viewData.details = buildDetails(state.viewData);
+  const statsItems = raw.mode === "ask" ? rows.map((row) => row.citation) : rows;
+  renderStats(raw.mode, statsItems, raw.request, raw.payload);
+  renderOverview(state.viewData);
+  if (dom.resultCount) {
+    dom.resultCount.textContent = t("resultFilters.count", {
+      shown: rows.length,
+      total: raw.rows.length,
+    });
+  }
+  setResultFiltersVisible(raw.rows.length > 0);
+  paintResults();
+}
+
+function resetResultFilters() {
+  if (dom.resultFrom) {
+    dom.resultFrom.value = "";
+  }
+  if (dom.resultTo) {
+    dom.resultTo.value = "";
+  }
+  dom.resultSourceInputs.forEach((input) => {
+    input.checked = true;
+  });
+  if (dom.resultSort) {
+    dom.resultSort.value = "relevance";
+  }
+  recomputeView();
+}
+
+function applyApiModeCopy(api = window.__acgnApi) {
+  const live = Boolean(api?.live);
+  const fallback = Boolean(api?.probeBase) && !live;
+  const chip = document.querySelector(".mode-chip");
+  if (chip) {
+    chip.textContent = t(live ? "chip.live" : fallback ? "chip.fallback" : "chip.demo");
+  }
+  const tag = document.querySelector(".mock-banner-tag");
+  if (tag) {
+    tag.textContent = t(live ? "banner.tag.live" : "banner.tag");
+  }
+  const text = document.querySelector(".mock-banner p");
+  if (text) {
+    text.textContent = live
+      ? t("banner.text.live", { base: api.base })
+      : fallback
+        ? t("banner.text.fallback", { base: api.probeBase })
+        : t("banner.text");
+  }
+  const config = document.querySelector(".snapshot-config");
+  if (config) {
+    config.textContent = t(
+      live ? "snapshot.config.live" : fallback ? "snapshot.config.fallback" : "snapshot.config",
+    );
+  }
 }
 
 function setFormNote(message, isError = false) {
@@ -1053,7 +1187,7 @@ function renderResponse(mode, payload, request, fromCache) {
     return;
   }
   if (stateName === "ask-abstained") {
-    state.viewData = null;
+    clearResultView();
     renderRefusal(payload);
     return;
   }
@@ -1063,19 +1197,18 @@ function renderResponse(mode, payload, request, fromCache) {
 function renderRetrieve(payload, request, stateName, fromCache) {
   const { items, hiddenCount } = selectRenderableExcerpts(payload);
   if (stateName === "retrieve-empty") {
-    state.viewData = null;
+    clearResultView();
     renderEmpty(request);
     return;
   }
   if (items.length === 0) {
-    state.viewData = null;
+    clearResultView();
     renderComplianceOnly(hiddenCount);
     return;
   }
 
-  renderStats("retrieve", items, request, payload);
   state.viewSeries += 1;
-  state.viewData = {
+  state.rawView = {
     mode: "retrieve",
     rows: normaliseRows("retrieve", items),
     request,
@@ -1083,14 +1216,10 @@ function renderRetrieve(payload, request, stateName, fromCache) {
     hiddenCount,
     fromCache,
   };
-  state.viewData.details = buildDetails(state.viewData);
-  renderOverview(state.viewData);
-  paintResults();
+  recomputeView();
   state.lastPaint = () => {
     setResultMeta("retrieve", request, fromCache);
-    renderStats("retrieve", items, request, payload);
-    renderOverview(state.viewData);
-    paintResults();
+    recomputeView();
   };
   revealResults();
   setResultStatus(
@@ -1183,10 +1312,8 @@ function renderAnswer(payload, request, fromCache) {
   const citations = Array.isArray(payload.citations) ? payload.citations : [];
   const visible = citations.filter((citation) => isRenderableCitation(citation));
   const hiddenCount = citations.length - visible.length;
-  renderStats("ask", visible, request, payload);
-
   state.viewSeries += 1;
-  state.viewData = {
+  state.rawView = {
     mode: "ask",
     rows: normaliseRows("ask", visible),
     request,
@@ -1194,14 +1321,10 @@ function renderAnswer(payload, request, fromCache) {
     hiddenCount,
     fromCache,
   };
-  state.viewData.details = buildDetails(state.viewData);
-  renderOverview(state.viewData);
-  paintResults();
+  recomputeView();
   state.lastPaint = () => {
     setResultMeta("ask", request, fromCache);
-    renderStats("ask", visible, request, payload);
-    renderOverview(state.viewData);
-    paintResults();
+    recomputeView();
   };
   revealResults();
   if (visible.length > 0) {
@@ -1373,13 +1496,17 @@ function paintResults() {
   if (data.mode === "ask") {
     children.push(buildAnswerPanel(data.payload, data.request));
   }
-  const complianceNote = data.mode === "retrieve"
-    ? t("retrieve.compliance", { n: data.rows.length, limit: MAX_QUOTE_CODEPOINTS })
-    : data.rows.length > 0
-      ? t("answer.compliance", { n: data.rows.length })
-      : (data.payload.citations ?? []).length === 0
-        ? t("answer.noCitations")
-        : null;
+  const rawCount = state.rawView?.rows.length ?? data.rows.length;
+  const filteredToNothing = data.rows.length === 0 && rawCount > 0;
+  const complianceNote = filteredToNothing
+    ? null
+    : data.mode === "retrieve"
+      ? t("retrieve.compliance", { n: data.rows.length, limit: MAX_QUOTE_CODEPOINTS })
+      : data.rows.length > 0
+        ? t("answer.compliance", { n: data.rows.length })
+        : (data.payload.citations ?? []).length === 0
+          ? t("answer.noCitations")
+          : null;
   if (complianceNote) {
     children.push(element("p", { className: "compliance-note", text: complianceNote }));
   }
@@ -1387,6 +1514,14 @@ function paintResults() {
     const view = element("div", { className: `results-view results-view--${state.view}` });
     view.append(VIEW_BUILDERS[state.view](data));
     children.push(view);
+  }
+  if (filteredToNothing) {
+    children.push(
+      element("section", { className: "state-panel empty-panel" }, [
+        element("h3", { text: t("resultFilters.empty") }),
+        element("p", { text: t("resultFilters.emptyHint") }),
+      ]),
+    );
   }
   if (data.hiddenCount > 0) {
     children.push(renderHiddenNotice(data.hiddenCount));
@@ -1800,7 +1935,7 @@ function observeReveals(root) {
 
 function renderApiError(error, request = state.lastRequest) {
   resetStats(t("stats.noCitations"));
-  state.viewData = null;
+  clearResultView();
   setOverviewHint(t("overview.error"));
   const status = error instanceof ApiError ? error.status : 0;
   const detail = error instanceof ApiError ? error.detail : error.message;
@@ -2009,6 +2144,7 @@ function switchLanguage(next) {
     return;
   }
   applyStaticCopy();
+  applyApiModeCopy();
   updateModeCopy();
   syncQuestionCount();
   if (state.inventory) {
@@ -2118,6 +2254,9 @@ function bindEvents() {
     paintResults();
   });
 
+  dom.resultFilters?.addEventListener("change", () => recomputeView());
+  dom.resultReset?.addEventListener("click", resetResultFilters);
+
   dom.detailClose?.addEventListener("click", closeDetail);
   dom.detailDialog?.addEventListener("click", (event) => {
     if (event.target === dom.detailDialog) {
@@ -2133,8 +2272,10 @@ function bindEvents() {
 }
 
 async function init() {
+  const api = await (window.__acgnApiReady ?? Promise.resolve(null));
   bindEvents();
   applyStaticCopy();
+  applyApiModeCopy(api);
   updateModeCopy();
   initAtmosphere();
   setOverviewHint(t("overview.initial"));

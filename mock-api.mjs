@@ -268,6 +268,82 @@ const ROUTES = {
 };
 
 const realFetch = window.fetch.bind(window);
+const API_BASE_KEY = "acgn:api-base";
+const DEFAULT_API_BASE = "http://127.0.0.1:8000";
+const PROBE_TIMEOUT_MS = 1500;
+
+/**
+ * `?api=https://host` wins and is remembered; `?api=off` clears the remembered host. Without a
+ * parameter the last remembered host is used, then the local FastAPI default.
+ */
+function resolveApiBase() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("api")) {
+    const raw = (params.get("api") ?? "").trim();
+    if (/^(off|none|mock)$/i.test(raw)) {
+      try {
+        window.localStorage.removeItem(API_BASE_KEY);
+      } catch {
+        // Private mode: the parameter still applies for this page load.
+      }
+      return "";
+    }
+    const base = raw.replace(/\/+$/, "");
+    if (base) {
+      try {
+        window.localStorage.setItem(API_BASE_KEY, base);
+      } catch {
+        // Private mode: the parameter still applies for this page load.
+      }
+    }
+    return base;
+  }
+  try {
+    const stored = window.localStorage.getItem(API_BASE_KEY);
+    if (stored) {
+      return stored.replace(/\/+$/, "");
+    }
+  } catch {
+    // Private mode: fall through to the local default.
+  }
+  return DEFAULT_API_BASE;
+}
+
+/** A real read is the only proof of life: `/snapshots` is cheap and every live page needs it. */
+async function probeBackend(base) {
+  if (!base) {
+    return false;
+  }
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+  try {
+    const response = await realFetch(`${base}/snapshots`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      return false;
+    }
+    const body = await response.json();
+    return typeof body?.current === "string" && Array.isArray(body?.retained);
+  } catch {
+    return false;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
+const probeBase = resolveApiBase();
+const apiInfo = { mode: "mock", live: false, base: "", probeBase, fallback: false };
+let markReady;
+window.__acgnApi = apiInfo;
+// `app.mjs` awaits this before its first read, so the page never flashes mock data while the
+// live probe is still in flight.
+window.__acgnApiReady = new Promise((resolve) => {
+  markReady = resolve;
+});
 
 window.fetch = async (input, init = {}) => {
   const rawUrl = typeof input === "string" ? input : input.url;
@@ -275,6 +351,10 @@ window.fetch = async (input, init = {}) => {
   const handler = ROUTES[url.pathname];
   if (!handler) {
     return realFetch(input, init);
+  }
+  const api = await window.__acgnApiReady;
+  if (api.live) {
+    return realFetch(`${api.base}${url.pathname}${url.search}`, init);
   }
   let body = {};
   if (typeof init.body === "string" && init.body.length > 0) {
@@ -288,3 +368,12 @@ window.fetch = async (input, init = {}) => {
   await sleep(240);
   return handler(body);
 };
+
+(async () => {
+  const live = await probeBackend(probeBase);
+  apiInfo.live = live;
+  apiInfo.mode = live ? "live" : "mock";
+  apiInfo.base = live ? probeBase : "";
+  apiInfo.fallback = Boolean(probeBase) && !live;
+  markReady(apiInfo);
+})();
